@@ -202,7 +202,7 @@ export class Compositor {
     async startCamera() {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
-                video: { width: 640, height: 480, frameRate: 30 },
+                video: true, // Allow any resolution/fps (Vision Pro might not support 640x480)
                 audio: true
             });
             this.webcamVideo.srcObject = stream;
@@ -244,6 +244,12 @@ export class Compositor {
             return stream;
         } catch (err) {
             console.error("Error starting camera:", err);
+            
+            if (location.protocol !== 'https:' && location.hostname !== 'localhost' && location.hostname !== '127.0.0.1') {
+                alert("Camera access requires HTTPS when using an external network IP. Please check the URL starts with https://");
+            } else {
+                alert(`Failed to start camera: ${err.name} - ${err.message}`);
+            }
             throw err;
         }
     }
