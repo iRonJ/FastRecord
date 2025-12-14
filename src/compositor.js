@@ -16,6 +16,10 @@ export class Compositor {
         // Config
         this.width = 1920;
         this.height = 1080;
+
+        // Render canvases for video sources
+        this.screenRenderCanvas = null;
+        this.screenRenderCtx = null;
     }
 
     async init() {
@@ -24,7 +28,7 @@ export class Compositor {
             width: this.width,
             height: this.height,
             backgroundColor: '#000',
-            selection: false
+            selection: true // Enable selection
         });
 
         // Resize canvas to fit window but keep aspect ratio
@@ -60,12 +64,19 @@ export class Compositor {
             finalHeight = finalWidth / ratio;
         }
 
-        // Set display size (CSS)
-        const canvasEl = document.getElementById(this.canvasId);
-        canvasEl.style.width = `${finalWidth}px`;
-        canvasEl.style.height = `${finalHeight}px`;
-
-        // Internal size remains high res
+        // Set display size (CSS) via Fabric to ensure offsets are calculated
+        // This sets the CSS width/height of the canvas element
+        if (this.fabricCanvas) {
+            this.fabricCanvas.setDimensions(
+                { width: `${finalWidth}px`, height: `${finalHeight}px` },
+                { cssOnly: true }
+            );
+        } else {
+            // Fallback if fabric not ready yet (though init calls it after creation)
+            const canvasEl = document.getElementById(this.canvasId);
+            canvasEl.style.width = `${finalWidth}px`;
+            canvasEl.style.height = `${finalHeight}px`;
+        }
     }
 
     async startCamera() {
@@ -98,9 +109,18 @@ export class Compositor {
                 originX: 'center',
                 originY: 'center',
                 flipX: true,
-                cornerColor: 'white',
-                cornerSize: 10,
-                transparentCorners: false
+                // Interactivity
+                selectable: true,
+                hasControls: true,
+                hasBorders: true,
+                lockUniScaling: false,
+                // Control styling
+                cornerColor: '#bb86fc',
+                cornerStyle: 'circle',
+                cornerSize: 12,
+                transparentCorners: false,
+                borderColor: '#bb86fc',
+                borderScaleFactor: 2
             });
 
             this.fabricCanvas.add(this.webcamImage);
@@ -127,27 +147,28 @@ export class Compositor {
             this.screenVideo.srcObject = stream;
             await this.screenVideo.play();
 
-            // Fabric Image for Screen
+            // Fabric Image for Screen - use intermediate canvas like webcam
             if (this.screenImage) {
                 this.fabricCanvas.remove(this.screenImage);
             }
 
-            this.screenImage = new fabric.Image(this.screenVideo, {
+            // Create intermediate canvas for screen
+            this.screenRenderCanvas = document.createElement('canvas');
+            this.screenRenderCanvas.width = this.screenVideo.videoWidth;
+            this.screenRenderCanvas.height = this.screenVideo.videoHeight;
+            this.screenRenderCtx = this.screenRenderCanvas.getContext('2d');
+
+            this.screenImage = new fabric.Image(this.screenRenderCanvas, {
                 left: 0,
                 top: 0,
                 originX: 'left',
                 originY: 'top',
                 selectable: false,
                 evented: false,
-                objectCaching: false, // Important for video
+                objectCaching: false,
             });
 
             // Scale screen to fit canvas
-            const scale = Math.max(
-                this.width / this.screenVideo.videoWidth,
-                this.height / this.screenVideo.videoHeight
-            );
-            // Usually we want to fit, not cover, or cover? Let's fit to width for now
             this.screenImage.scaleToWidth(this.width);
 
             this.fabricCanvas.add(this.screenImage);
@@ -162,6 +183,8 @@ export class Compositor {
             stream.getVideoTracks()[0].onended = () => {
                 this.fabricCanvas.remove(this.screenImage);
                 this.screenImage = null;
+                this.screenRenderCanvas = null;
+                this.screenRenderCtx = null;
             };
 
             this.startRenderLoop(); // Ensure loop is running
@@ -235,12 +258,10 @@ export class Compositor {
                 }
             }
 
-            // 2. Mark Screen as dirty
-            if (this.screenImage) {
-                // Ensure video is playing and has data
-                if (this.screenVideo.readyState >= 2) {
-                    this.screenImage.dirty = true;
-                }
+            // 2. Update Screen canvas
+            if (this.screenImage && this.screenRenderCtx && this.screenVideo.readyState >= 2) {
+                this.screenRenderCtx.drawImage(this.screenVideo, 0, 0);
+                this.screenImage.dirty = true;
             }
 
             // 3. Render Canvas
