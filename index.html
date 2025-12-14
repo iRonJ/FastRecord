@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FastRecord</title>
+</head>
+
+<body>
+  <div id="app">
+    <header>
+      <h1>FastRecord</h1>
+      <div id="status-indicator">Ready</div>
+    </header>
+
+    <div class="canvas-container" id="canvas-container">
+      <canvas id="main-canvas"></canvas>
+    </div>
+
+    <div class="controls">
+      <button id="btn-start-camera">Start Camera</button>
+      <button id="btn-share-screen">Share Screen</button>
+      <div style="width: 20px;"></div>
+      <button id="btn-record" class="primary" disabled>Start Recording</button>
+    </div>
+  </div>
+
+  <!-- Hidden elements for processing -->
+  <video id="webcam-video" playsinline style="display: none;"></video>
+  <video id="screen-video" playsinline style="display: none;"></video>
+
+  <!-- Overlay for loading states -->
+  <div id="loading-overlay" class="loading-overlay" style="display: none;">
+    <div class="spinner"></div>
+    <h2 id="loading-text">Initializing...</h2>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>
