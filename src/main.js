@@ -1,12 +1,10 @@
 import './style.css';
 import { Compositor } from './compositor.js';
 import { Recorder } from './recorder.js';
-import { Transcoder } from './transcoder.js';
 
 const app = {
   compositor: null,
   recorder: null,
-  transcoder: null,
   isRecording: false,
   webcamStream: null,
   screenStream: null,
@@ -26,10 +24,6 @@ const app = {
     try {
       this.compositor = new Compositor('main-canvas');
       await this.compositor.init();
-
-      this.transcoder = new Transcoder();
-      // Preload ffmpeg
-      this.transcoder.load().catch(e => console.warn("FFmpeg background load failed, will try again on use:", e));
 
       this.setupEventListeners();
       this.showLoading(false);
@@ -112,20 +106,18 @@ const app = {
     this.ui.btnRecord.classList.remove("recording");
     this.ui.btnRecord.disabled = true; // Disable until processing done
 
-    this.showLoading(true, "Processing Video...");
+    this.showLoading(true, "Finalizing Video...");
     this.setStatus("Processing...");
 
-    const blob = await this.recorder.stop();
+    const { blob, extension } = await this.recorder.stop();
 
     try {
-      this.updateLoadingText("Transcoding to MP4...");
-      const mp4Blob = await this.transcoder.transcode(blob);
-      this.download(mp4Blob, 'fastrecord-output.mp4');
-      this.setStatus("Saved!");
+      const filename = `fastrecord-output.${extension}`;
+      this.download(blob, filename);
+      this.setStatus(`Saved as ${extension.toUpperCase()}!`);
     } catch (e) {
-      console.error("Transcoding failed, downloading WebM instead", e);
-      this.download(blob, 'fastrecord-input.webm');
-      this.setStatus("Saved (WebM fallback)");
+      console.error("Save failed", e);
+      this.setStatus("Save Failed");
     }
 
     this.showLoading(false);

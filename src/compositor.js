@@ -206,6 +206,7 @@ export class Compositor {
                 audio: true
             });
             this.webcamVideo.srcObject = stream;
+            this.webcamVideo.muted = true; // Prevent audio monitoring/feedback
             await this.webcamVideo.play();
 
             const webcamEl = document.createElement('canvas');
@@ -255,6 +256,7 @@ export class Compositor {
             });
 
             this.screenVideo.srcObject = stream;
+            this.screenVideo.muted = true; // Prevent local echo
             await this.screenVideo.play();
 
             if (this.screenImage) {
